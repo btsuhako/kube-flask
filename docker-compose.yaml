@@ -1,0 +1,22 @@
+version: '3'
+services:
+  todo:
+    build:
+      context: .
+    image: btsuhako/todo:latest
+    ports:
+    - 5000:5000
+    depends_on:
+    - postgresql
+
+  postgresql:
+    image: postgres:11.9
+    volumes:
+    - pgdata:/var/postgres
+    environment:
+    - POSTGRES_PASSWORD=postgres123
+    ports:
+      - 5432
+
+volumes:
+  pgdata:
