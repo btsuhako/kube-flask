@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql
+data:
+  POSTGRES_DB: postgres
+  POSTGRES_USER: postgres
+  REPMGR_DATABASE: repmgr
+  REPMGR_PARTNER_NODES: postgresql-0.postgresql-headless.default.svc.cluster.local,postgresql-1.postgresql-headless.default.svc.cluster.local
+  REPMGR_PGHBA_TRUST_ALL: "no"
+  REPMGR_PRIMARY_HOST: postgresql-0.postgresql-headless.default.svc.cluster.local
+  REPMGR_USERNAME: repmgr
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgpool
+data:
+  PGPOOL_ADMIN_USERNAME: postgres
+  PGPOOL_BACKEND_NODES: 0:postgresql-0.postgresql-headless.default.svc.cluster.local:5432,1:postgresql-1.postgresql-headless.default.svc.cluster.local:5432
+  PGPOOL_ENABLE_LDAP: "no"
+  PGPOOL_ENABLE_LOAD_BALANCING: "yes"
+  PGPOOL_POSTGRES_USERNAME: postgres
+  PGPOOL_SR_CHECK_DATABASE: postgres
+  PGPOOL_SR_CHECK_USER: repmgr
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flask
+data:
+  SQLALCHEMY_DATABASE_URI: 'postgresql://postgres:postgres123@pgpool:5432/postgres'

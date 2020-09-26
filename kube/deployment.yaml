@@ -1,0 +1,113 @@
+# pgpool
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgpool
+  labels:
+    app: postgres
+    role: pgpool
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+      role: pgpool
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: pgpool
+    spec:
+      containers:
+        - name: pgpool
+          image: 'bitnami/pgpool:4.1.4'
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: pgpool
+            - configMapRef:
+                name: pgpool
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+              cpu: '1'
+          livenessProbe:
+            exec:
+              command:
+                - /opt/bitnami/scripts/pgpool/healthcheck.sh
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: role
+                      operator: In
+                      values:
+                        - pgpool
+                topologyKey: kubernetes.io/hostname
+---
+# application
+# flask
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask
+  labels:
+    app: flask
+    role: web
+spec:
+  selector:
+    matchLabels:
+      app: flask
+      role: web
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: flask
+        role: web
+    spec:
+      containers:
+        - name: todo
+          image: 'btsuhako/todo:latest'
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: flask
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+              cpu: '1'
+          livenessProbe:
+            tcpSocket:
+                port: 5000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: role
+                      operator: In
+                      values:
+                        - web
+                topologyKey: kubernetes.io/hostname

@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  labels:
+    app: postgres
+    role: postgresql
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+      role: postgresql
+  replicas: 2
+  updateStrategy:
+    type: RollingUpdate
+  serviceName: postgresql-headless
+  podManagementPolicy: OrderedReady
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+        labels:
+          app: postgres
+          role: postgresql
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 4Gi
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: postgresql
+    spec:
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: postgresql
+          image: bitnami/postgresql-repmgr:11.9.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - name: pgdata
+              mountPath: /bitnami/postgresql
+          envFrom:
+            - secretRef:
+                name: postgresql
+            - configMapRef:
+                name: postgresql
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: REPMGR_NODE_NAME
+              value: $(MY_POD_NAME)
+            - name: REPMGR_NODE_NETWORK_NAME
+              value: $(MY_POD_NAME).postgresql-headless.default.svc.cluster.local
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+              cpu: '1'
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'PGPASSWORD=$POSTGRES_PASSWORD psql -w -U "postgres" -d "postgres" -h 127.0.0.1 -c "SELECT 1"'
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'PGPASSWORD=$POSTGRES_PASSWORD psql -w -U "postgres" -d "postgres" -h 127.0.0.1 -c "SELECT 1"'
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          securityContext:
+            runAsUser: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: role
+                      operator: In
+                      values:
+                        - postgresql
+                topologyKey: kubernetes.io/hostname

@@ -1,0 +1,67 @@
+# load balancer for app
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask
+spec:
+  type: LoadBalancer
+  selector:
+    app: flask
+    role: web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+      name: http
+---
+# pgpool service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgpool
+  labels:
+    app: postgres
+    role: postgresql
+spec:
+  selector:
+    app: postgres
+    role: pgpool
+  ports:
+    - port: 5432
+---
+# pg service headless
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-headless
+  labels:
+    app: postgres
+    role: postgresql-headless
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+    role: postgresql
+  ports:
+    - port: 5432
+      name: postgresql
+      targetPort: postgresql
+      protocol: TCP
+---
+# pg service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  labels:
+    app: postgres
+    role: postgresql
+spec:
+  selector:
+    app: postgres
+    role: postgresql
+  ports:
+    - port: 5432
+      name: postgresql
+      targetPort: postgresql
+      protocol: TCP

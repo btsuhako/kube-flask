@@ -1,0 +1,20 @@
+# flask db upgrade
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flask-db-upgrade
+  labels:
+    app: flask
+    role: db-upgrade
+spec:
+  template:
+    spec:
+      containers:
+      - name: flask-db-upgrade
+        image: btsuhako/todo:latest
+        imagePullPolicy: Always
+        command: ["flask",  "db", "upgrade"]
+        envFrom:
+          - configMapRef:
+              name: flask
+      restartPolicy: OnFailure
